@@ -31,6 +31,8 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => '#674CC4',
             ])
             ->font('Poppins')
+            ->favicon('images/unnamed.png')
+            ->darkmode(false)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
