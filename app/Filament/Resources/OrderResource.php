@@ -2,17 +2,17 @@
 
 namespace App\Filament\Resources;
 
-
+use App\Enums\OrderStatusEnum;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
+use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\Summarizers\Sum;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+
 
 class OrderResource extends Resource
 {
@@ -24,27 +24,60 @@ class OrderResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Wizard::make([
-                    Forms\Components\Wizard\Step::make('Order Details')
-                        ->schema([
-                            Forms\Components\TextInput::make('number')->required(),
-                            Forms\Components\Select::make('customer_id')
-                                ->relationship('customer', 'name')
-                                ->required(),
-                            Forms\Components\TextInput::make('status')->required(),
-                            Forms\Components\TextInput::make('shipping_price')->numeric()->required(),
-                            Forms\Components\TextInput::make('total_price')->numeric()->required(),
-                            Forms\Components\Textarea::make('notes'),
-                        ]),
+        return $form->schema([
+            Forms\Components\Wizard::make([
+                Forms\Components\Wizard\Step::make('Order Details')
+                    ->schema([
+                        Forms\Components\TextInput::make('number')
+                            ->default('R-' . random_int(10000, 99999))
+                            ->disabled()
+                            ->dehydrated()
+                            ->required(),
 
-                    Forms\Components\Wizard\Step::make('Order Items')
-                        ->schema([
-                            // Add order items fields or relation manager here if needed
-                        ])->columnSpanFull(),
-                ]),
-            ]);
+                        Forms\Components\Select::make('customer_id')
+                            ->relationship('customer', 'name')
+                            ->searchable(),
+
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                OrderStatusEnum::Pending->value    => 'Pending',
+                                OrderStatusEnum::Processing->value => 'Processing',
+                                OrderStatusEnum::Completed->value  => 'Completed',
+                                OrderStatusEnum::Declined->value   => 'Declined', 
+                            ])
+                            ->columnSpanFull()
+                            ->required(),
+
+                        Forms\Components\Textarea::make('notes')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+
+                Forms\Components\Wizard\Step::make('Order Items')
+                    ->schema([
+                        Forms\Components\Repeater::make('items')
+                            ->relationship('items')
+                            ->schema([
+                                Forms\Components\Select::make('product_id')
+                                    ->label('Product')
+                                    ->options(fn () => Product::query()->pluck('name', 'id')->toArray())
+                                    ->required(),
+
+                                Forms\Components\TextInput::make('quantity')
+                                    ->numeric()
+                                    ->default(1)
+                                    ->required(),
+
+                                Forms\Components\TextInput::make('unit_price')
+                                    ->label('Unit Price')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->numeric()
+                                    ->required(),
+                            ])->columns(3),
+                    ]),
+            ])->columnSpanFull(),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -55,14 +88,17 @@ class OrderResource extends Resource
                     ->label('Order Number')
                     ->sortable()
                     ->searchable(),
+
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Customer')
                     ->sortable()
                     ->searchable()
                     ->toggleable(),
+
                 Tables\Columns\TextColumn::make('status')
                     ->sortable()
                     ->searchable(),
+
                 Tables\Columns\TextColumn::make('total_price')
                     ->sortable()
                     ->searchable()
@@ -73,13 +109,11 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created At')
                     ->date(),
+
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Updated At')
                     ->dateTime()
                     ->sortable(),
-            ])
-            ->filters([
-                //
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -97,17 +131,15 @@ class OrderResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListOrders::route('/'),
+            'index'  => Pages\ListOrders::route('/'),
             'create' => Pages\CreateOrder::route('/create'),
-            'edit' => Pages\EditOrder::route('/{record}/edit'),
+            'edit'   => Pages\EditOrder::route('/{record}/edit'),
         ];
     }
 }
