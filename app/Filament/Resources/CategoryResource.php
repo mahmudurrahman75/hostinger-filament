@@ -3,15 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CategoryResource\Pages;
-use App\Filament\Resources\CategoryResource\RelationManagers;
 use App\Models\Category;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Str;
 
 class CategoryResource extends Resource
 {
@@ -27,34 +25,45 @@ class CategoryResource extends Resource
             ->schema([
                 Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Section::make([
-                            Forms\Components\TextInput::make('name')
-                                ->required()
-                                ->live(onBlur: true)
-                                ->unique()
-                                ->afterStateUpdated(function (string $operation, $state, Forms\Set $set) {
-                                    if ($operation !== 'create') {
-                                        return;
-                                    }
-                                    $set('slug', Str::slug($state));
-                        }),
-                    Forms\Components\TextInput::make('slug')
-                        ->disabled()
-                        ->dehydrated()
-                        ->required()
-                        ->unique(Product::class, 'slug', ignoreRecord: true),
-                    Forms\Components\MarkdownEditor::make('description')
-                        ->columnSpan('full'),
-                ])->columns(2),
+                        Forms\Components\Section::make('Category Details')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->required()
+                                    ->live(onBlur: true)
+                                    ->unique(ignoreRecord: true)
+                                    ->afterStateUpdated(function (string $operation, $state, Forms\Set $set) {
+                                        if ($operation !== 'create') {
+                                            return;
+                                        }
+                                        $set('slug', Str::slug($state));
+                                    }),
 
-                Forms\Components\Section::make('Pricing & Inventory')->schema([
-                    Forms\Components\TextInput::make('sku')
-                        ->label('SKU (Stock Keeping Unit)')
-                        ->unique(Product::class, 'sku', ignoreRecord: true)
+                                Forms\Components\TextInput::make('slug')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->required()
+                                    ->unique(Category::class, 'slug', ignoreRecord: true),
 
-                        
-                        ])
-                    ])
+                                Forms\Components\MarkdownEditor::make('description')
+                                    ->columnSpanFull(),
+                            ])->columns(2),
+
+                        Forms\Components\Group::make()
+                            ->schema([
+                                Forms\Components\Section::make('Status')
+                                    ->schema([
+                                        Forms\Components\Toggle::make('is_visible')
+                                            ->label('Visibility')
+                                            ->helperText('Enable or disable category visibility')
+                                            ->default(true),
+
+                                        Forms\Components\Select::make('parent_id')
+                                            ->relationship('parent', 'name')
+                                            ->searchable()
+                                            ->nullable(),
+                                    ]),
+                            ]),
+                    ]),
             ]);
     }
 
@@ -63,23 +72,23 @@ class CategoryResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                ->searchable()
-                ->sortable(),
+                    ->searchable()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('parent.name')
-                ->label('parent')
-                ->searchable()
-                ->sortable(),
+                    ->label('Parent')
+                    ->searchable()
+                    ->sortable(),
 
-                Tables\Columns\IconColumn::make('is_active')
-                ->label('Visibility')
-                ->boolean()
-                ->sortable(),
+                Tables\Columns\IconColumn::make('is_visible')
+                    ->label('Visibility')
+                    ->boolean()
+                    ->sortable(),
 
-                Tables\Columns\TextColumn::make('created_at')
-                ->date()
-                ->label('Created Date')
-                ->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->date()
+                    ->label('Updated Date')
+                    ->sortable(),
             ])
             ->filters([
                 //
